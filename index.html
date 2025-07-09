@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運賃計算アプリ</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            width: 90%;
+            max-width: 500px;
+            padding: 2em;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 1.5em;
+        }
+        .input-group {
+            margin-bottom: 1em;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5em;
+            color: #555;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 0.8em;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 1em;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 1.5em;
+            padding: 1em;
+            background-color: #e9f7ef;
+            border-radius: 4px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #155724;
+            min-height: 1.5em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>運賃計算アプリ</h1>
+        <div class="input-group">
+            <label for="start">出発地</label>
+            <input type="text" id="start" placeholder="例：東京駅">
+        </div>
+        <div class="input-group">
+            <label for="end">目的地</label>
+            <input type="text" id="end" placeholder="例：東京スカイツリー">
+        </div>
+        <button id="calculate">運賃を計算する</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // ボタン要素を取得
+        const calculateButton = document.getElementById('calculate');
+        // 結果を表示する要素を取得
+        const resultDiv = document.getElementById('result');
+
+        // ボタンがクリックされたときの処理
+        calculateButton.addEventListener('click', () => {
+            // 入力された出発地と目的地を取得
+            const startPoint = document.getElementById('start').value;
+            const endPoint = document.getElementById('end').value;
+
+            // 入力が空の場合は処理を中断
+            if (!startPoint || !endPoint) {
+                resultDiv.textContent = '出発地と目的地を入力してください。';
+                resultDiv.style.color = '#721c24';
+                resultDiv.style.backgroundColor = '#f8d7da';
+                return;
+            }
+
+            // --- ここからダミーの計算 ---
+            // 本来はGoogle Maps APIで距離を計算しますが、今は仮の計算をします。
+            // 簡単なロジック：文字数の合計で料金を変えてみる
+            const textLength = startPoint.length + endPoint.length;
+            const fare = 1000 + (textLength * 50); 
+            // --- ダミーの計算ここまで ---
+
+            // 結果を表示
+            resultDiv.textContent = `概算運賃は 約 ${fare} 円です。`;
+            resultDiv.style.color = '#155724';
+            resultDiv.style.backgroundColor = '#e9f7ef';
+        });
+    </script>
+</body>
+</html>
