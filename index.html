@@ -67,6 +67,7 @@
             font-weight: bold;
             color: #155724;
             min-height: 1.5em;
+            line-height: 1.5;
         }
     </style>
 </head>
@@ -85,38 +86,93 @@
         <div id="result"></div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
     <script>
-        // ボタン要素を取得
+        // あなたのFirebaseプロジェクトの接続情報
+        const firebaseConfig = {
+          apiKey: "AIzaSyD66pEZlZRYoGROuF2eImITKdnY3vBh3kY",
+          authDomain: "fare-app-main.firebaseapp.com",
+          projectId: "fare-app-main",
+          storageBucket: "fare-app-main.firebasestorage.app",
+          messagingSenderId: "68530669162",
+          appId: "1:68530669162:web:8f7ac180851b8f93902c13"
+        };
+
+        // Firebaseを初期化
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // HTMLの要素を取得
+        const startInput = document.getElementById('start');
+        const endInput = document.getElementById('end');
         const calculateButton = document.getElementById('calculate');
-        // 結果を表示する要素を取得
         const resultDiv = document.getElementById('result');
+
+        let directionsService;
+        
+        // Google Maps APIのスクリプトを動的に読み込む
+        function loadGoogleMapsAPI() {
+            const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+
+        // 地図の初期化とオートコンプリートの設定
+        window.initMap = function() {
+            directionsService = new google.maps.DirectionsService();
+            
+            const autocompleteOptions = {
+                componentRestrictions: { country: "jp" },
+            };
+
+            new google.maps.places.Autocomplete(startInput, autocompleteOptions);
+            new google.maps.places.Autocomplete(endInput, autocompleteOptions);
+        }
 
         // ボタンがクリックされたときの処理
         calculateButton.addEventListener('click', () => {
-            // 入力された出発地と目的地を取得
-            const startPoint = document.getElementById('start').value;
-            const endPoint = document.getElementById('end').value;
+            const startPoint = startInput.value;
+            const endPoint = endInput.value;
 
-            // 入力が空の場合は処理を中断
             if (!startPoint || !endPoint) {
                 resultDiv.textContent = '出発地と目的地を入力してください。';
-                resultDiv.style.color = '#721c24';
-                resultDiv.style.backgroundColor = '#f8d7da';
                 return;
             }
 
-            // --- ここからダミーの計算 ---
-            // 本来はGoogle Maps APIで距離を計算しますが、今は仮の計算をします。
-            // 簡単なロジック：文字数の合計で料金を変えてみる
-            const textLength = startPoint.length + endPoint.length;
-            const fare = 1000 + (textLength * 50); 
-            // --- ダミーの計算ここまで ---
+            const request = {
+                origin: startPoint,
+                destination: endPoint,
+                travelMode: 'DRIVING'
+            };
 
-            // 結果を表示
-            resultDiv.textContent = `概算運賃は 約 ${fare} 円です。`;
-            resultDiv.style.color = '#155724';
-            resultDiv.style.backgroundColor = '#e9f7ef';
+            directionsService.route(request, (result, status) => {
+                if (status == 'OK') {
+                    const route = result.routes[0].legs[0];
+                    const distanceInMeters = route.distance.value; // メートル単位
+                    const distanceInKm = route.distance.text; // "xx km"
+                    
+                    // 東京のタクシー料金を参考にした簡易計算
+                    let fare = 500; // 初乗り1.096kmまで500円
+                    if (distanceInMeters > 1096) {
+                        const extraDistance = distanceInMeters - 1096;
+                        const extraFare = Math.ceil(extraDistance / 255) * 100;
+                        fare += extraFare;
+                    }
+                    
+                    resultDiv.innerHTML = `距離: ${distanceInKm}<br>概算運賃: 約 ${fare} 円`;
+                } else {
+                    resultDiv.textContent = 'ルートが見つかりませんでした。';
+                }
+            });
         });
+
+        // ページ読み込み時にGoogle Maps APIを読み込む
+        loadGoogleMapsAPI();
     </script>
 </body>
 </html>
