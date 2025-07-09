@@ -69,6 +69,14 @@
             min-height: 1.5em;
             line-height: 1.5;
         }
+        /* 地図を表示するエリアのスタイル */
+        #map {
+            width: 100%;
+            height: 400px;
+            margin-top: 1.5em;
+            background-color: #e9e9e9;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -84,6 +92,7 @@
         </div>
         <button id="calculate">運賃を計算する</button>
         <div id="result"></div>
+        <div id="map"></div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -109,9 +118,12 @@
         const endInput = document.getElementById('end');
         const calculateButton = document.getElementById('calculate');
         const resultDiv = document.getElementById('result');
+        const mapDiv = document.getElementById('map');
 
         let directionsService;
-        
+        let directionsRenderer; // 地図にルートを描画するためのオブジェクト
+        let map; // 地図オブジェクト
+
         // Google Maps APIのスクリプトを動的に読み込む
         function loadGoogleMapsAPI() {
             const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
@@ -124,7 +136,17 @@
 
         // 地図の初期化とオートコンプリートの設定
         window.initMap = function() {
+            // 地図の初期表示（東京駅中心）
+            map = new google.maps.Map(mapDiv, {
+                zoom: 12,
+                center: { lat: 35.681, lng: 139.767 }, // 東京駅
+                mapTypeControl: false,
+            });
+
             directionsService = new google.maps.DirectionsService();
+            // DirectionsRendererを初期化し、地図と連携
+            directionsRenderer = new google.maps.DirectionsRenderer();
+            directionsRenderer.setMap(map);
             
             const autocompleteOptions = {
                 componentRestrictions: { country: "jp" },
@@ -152,12 +174,15 @@
 
             directionsService.route(request, (result, status) => {
                 if (status == 'OK') {
+                    // ルートが見つかったら、地図にルートを描画
+                    directionsRenderer.setDirections(result);
+
                     const route = result.routes[0].legs[0];
-                    const distanceInMeters = route.distance.value; // メートル単位
-                    const distanceInKm = route.distance.text; // "xx km"
+                    const distanceInMeters = route.distance.value; 
+                    const distanceInKm = route.distance.text; 
                     
                     // 東京のタクシー料金を参考にした簡易計算
-                    let fare = 500; // 初乗り1.096kmまで500円
+                    let fare = 500; 
                     if (distanceInMeters > 1096) {
                         const extraDistance = distanceInMeters - 1096;
                         const extraFare = Math.ceil(extraDistance / 255) * 100;
@@ -167,6 +192,10 @@
                     resultDiv.innerHTML = `距離: ${distanceInKm}<br>概算運賃: 約 ${fare} 円`;
                 } else {
                     resultDiv.textContent = 'ルートが見つかりませんでした。';
+                    // ルートが見つからなかった場合、地図をクリア
+                    directionsRenderer.setDirections({routes: []});
+                    map.setCenter({ lat: 35.681, lng: 139.767 }); // 東京駅にリセット
+                    map.setZoom(12);
                 }
             });
         });
