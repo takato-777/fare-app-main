@@ -5,74 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>運賃計算アプリ</title>
     <style>
-        body {
-            font-family: sans-serif;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            overflow: hidden; /* 地図がはみ出さないように */
-        }
-        #map {
-            flex-grow: 1; /* 地図が利用可能なスペースを最大限に取る */
-            height: 100%;
-        }
-        .sidebar {
-            width: 300px;
-            background-color: rgba(255, 255, 255, 0.8); /* 半透明の背景 */
-            padding: 2em;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            z-index: 10; /* 地図の上に表示 */
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 1.5em;
-            text-align: center;
-        }
-        .input-group {
-            margin-bottom: 1em;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5em;
-            color: #555;
-            font-weight: bold;
-        }
-        input {
-            width: 100%;
-            padding: 0.8em;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 1em;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1em;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #result {
-            margin-top: 1.5em;
-            padding: 1em;
-            background-color: #e9f7ef;
-            border-radius: 4px;
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #155724;
-            line-height: 1.5;
-            text-align: center;
-        }
+        body { font-family: sans-serif; margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
+        #map { flex-grow: 1; height: 100%; background-color: #e9e9e9; }
+        .sidebar { width: 350px; background-color: white; padding: 1.5em; box-sizing: border-box; display: flex; flex-direction: column; z-index: 10; overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1); }
+        h1, h2 { text-align: center; color: #333; }
+        h1 { font-size: 1.8em; margin-top: 0; margin-bottom: 1em; }
+        h2 { font-size: 1.2em; margin-top: 2em; margin-bottom: 1em; border-bottom: 1px solid #eee; padding-bottom: 0.5em;}
+        .input-group { margin-bottom: 1em; }
+        label { display: block; margin-bottom: 0.5em; color: #555; font-weight: bold; }
+        input, select, button { width: 100%; padding: 0.8em; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; transition: background-color 0.3s; }
+        button:hover { background-color: #0056b3; }
+        #result { margin-top: 1.5em; padding: 1em; background-color: #e9f7ef; border-radius: 4px; font-weight: bold; color: #155724; line-height: 1.5; text-align: center; min-height: 1.5em;}
+        #saved-locations-list { list-style-type: none; padding: 0; }
+        .location-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8em; border-bottom: 1px solid #eee; }
+        .location-item span { font-weight: bold; }
+        .delete-btn { background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0.4em 0.8em; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -81,47 +29,152 @@
         <h1>運賃計算</h1>
         <div class="input-group">
             <label for="start">出発地</label>
-            <input type="text" id="start" placeholder="例：筑波大学">
+            <select id="start"></select>
         </div>
         <div class="input-group">
             <label for="end">目的地</label>
-            <input type="text" id="end" placeholder="例：つくば駅">
+            <select id="end"></select>
         </div>
         <button id="calculate">運賃を計算する</button>
         <div id="result"></div>
+        
+        <div class="location-manager">
+            <h2>地点登録・管理</h2>
+            <form id="add-location-form">
+                <div class="input-group">
+                    <label for="location-name">地点名</label>
+                    <input type="text" id="location-name" placeholder="例：本社" required>
+                </div>
+                <div class="input-group">
+                    <label for="location-address">住所</label>
+                    <input type="text" id="location-address" placeholder="例：東京都千代田区千代田１−１" required>
+                </div>
+                <button type="submit">この地点を登録</button>
+            </form>
+            <ul id="saved-locations-list"></ul>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
-        // あなたのFirebaseプロジェクトの接続情報
+        // --- Configuration ---
         const firebaseConfig = {
-          apiKey: "AIzaSyD66pEZlZRYoGROuF2eImITKdnY3vBh3kY",
-          authDomain: "fare-app-main.firebaseapp.com",
-          projectId: "fare-app-main",
-          storageBucket: "fare-app-main.firebasestorage.app",
-          messagingSenderId: "68530669162",
-          appId: "1:68530669162:web:8f7ac180851b8f93902c13"
+            apiKey: "AIzaSyD66pEZlZRYoGROuF2eImITKdnY3vBh3kY",
+            authDomain: "fare-app-main.firebaseapp.com",
+            projectId: "fare-app-main",
+            storageBucket: "fare-app-main.firebasestorage.app",
+            messagingSenderId: "68530669162",
+            appId: "1:68530669162:web:8f7ac180851b8f93902c13"
         };
+        const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
 
-        // Firebaseを初期化
+        // --- Initialize Firebase ---
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // HTMLの要素を取得
-        const startInput = document.getElementById('start');
-        const endInput = document.getElementById('end');
+        // --- HTML Elements ---
+        const startSelect = document.getElementById('start');
+        const endSelect = document.getElementById('end');
         const calculateButton = document.getElementById('calculate');
         const resultDiv = document.getElementById('result');
         const mapDiv = document.getElementById('map');
+        const addLocationForm = document.getElementById('add-location-form');
+        const locationNameInput = document.getElementById('location-name');
+        const locationAddressInput = document.getElementById('location-address');
+        const savedLocationsList = document.getElementById('saved-locations-list');
 
-        let directionsService;
-        let directionsRenderer;
-        let map;
+        let directionsService, directionsRenderer, map;
 
-        function loadGoogleMapsAPI() {
-            const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
+        // --- Google Maps Initialization ---
+        function initMap() {
+            map = new google.maps.Map(mapDiv, {
+                zoom: 12,
+                center: { lat: 35.681, lng: 139.767 },
+                mapTypeControl: false, fullscreenControl: false, streetViewControl: false
+            });
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+            
+            const autocompleteOptions = { componentRestrictions: { country: "jp" } };
+            new google.maps.places.Autocomplete(locationAddressInput, autocompleteOptions);
+        }
+
+        // --- Firestore Functions ---
+        function listenToLocations() {
+             db.collection("locations").orderBy("name").onSnapshot(snapshot => {
+                const locations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateLocationUI(locations);
+            });
+        }
+
+        function updateLocationUI(locations) {
+            startSelect.innerHTML = '<option value="">出発地を選択</option>';
+            endSelect.innerHTML = '<option value="">目的地を選択</option>';
+            savedLocationsList.innerHTML = "";
+
+            locations.forEach(loc => {
+                startSelect.innerHTML += `<option value="${loc.address}">${loc.name}</option>`;
+                endSelect.innerHTML += `<option value="${loc.address}">${loc.name}</option>`;
+                
+                const li = document.createElement('li');
+                li.className = 'location-item';
+                li.innerHTML = `<span>${loc.name}</span> <button class="delete-btn" data-id="${loc.id}">削除</button>`;
+                savedLocationsList.appendChild(li);
+            });
+        }
+        
+        // --- Event Listeners ---
+        addLocationForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = locationNameInput.value.trim();
+            const address = locationAddressInput.value.trim();
+            if (name && address) {
+                db.collection("locations").add({ name, address })
+                    .then(() => addLocationForm.reset())
+                    .catch(error => console.error("Error adding document: ", error));
+            }
+        });
+
+        savedLocationsList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                if (confirm('この地点を削除しますか？')) {
+                    db.collection("locations").doc(id).delete();
+                }
+            }
+        });
+        
+        calculateButton.addEventListener('click', () => {
+            const startPoint = startSelect.value;
+            const endPoint = endSelect.value;
+
+            if (!startPoint || !endPoint) {
+                resultDiv.textContent = '出発地と目的地を選択してください。';
+                return;
+            }
+
+            const request = { origin: startPoint, destination: endPoint, travelMode: 'DRIVING' };
+            directionsService.route(request, (result, status) => {
+                if (status == 'OK') {
+                    directionsRenderer.setDirections(result);
+                    const route = result.routes[0].legs[0];
+                    const distanceInMeters = route.distance.value;
+                    let fare = 500;
+                    if (distanceInMeters > 1096) {
+                        fare += Math.ceil((distanceInMeters - 1096) / 255) * 100;
+                    }
+                    resultDiv.innerHTML = `距離: ${route.distance.text}<br>概算運賃: 約 ${fare} 円`;
+                } else {
+                    resultDiv.textContent = 'ルートが見つかりませんでした。';
+                    directionsRenderer.setDirections({routes: []});
+                }
+            });
+        });
+
+        // --- Main Execution ---
+        function loadGoogleMapsScript() {
             const script = document.createElement('script');
             script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=initMap`;
             script.async = true;
@@ -129,79 +182,9 @@
             document.head.appendChild(script);
         }
 
-        window.initMap = function() {
-            map = new google.maps.Map(mapDiv, {
-                zoom: 13,
-                center: { lat: 36.052, lng: 140.075 }, // 現在地の緯度経度に近い場所で初期化 (つくば市周辺)
-                mapTypeControl: false,
-                fullscreenControl: false,
-                streetViewControl: false
-            });
-
-            directionsService = new google.maps.DirectionsService();
-            directionsRenderer = new google.maps.DirectionsRenderer({
-                map: map,
-                suppressMarkers: true // デフォルトのマーカーを非表示にする
-            });
-
-            const autocompleteOptions = {
-                componentRestrictions: { country: "jp" },
-            };
-
-            new google.maps.places.Autocomplete(startInput, autocompleteOptions);
-            new google.maps.places.Autocomplete(endInput, autocompleteOptions);
-        }
-
-        calculateButton.addEventListener('click', () => {
-            const startPoint = startInput.value;
-            const endPoint = endInput.value;
-
-            if (!startPoint || !endPoint) {
-                resultDiv.textContent = '出発地と目的地を入力してください。';
-                return;
-            }
-
-            const request = {
-                origin: startPoint,
-                destination: endPoint,
-                travelMode: 'DRIVING'
-            };
-
-            directionsService.route(request, (result, status) => {
-                if (status == 'OK') {
-                    directionsRenderer.setDirections(result);
-                    const route = result.routes?.[0]?.legs?.[0];
-                    if (route) {
-                        const distanceInMeters = route.distance.value;
-                        const distanceInKm = route.distance.text;
-
-                        let fare = 500;
-                        if (distanceInMeters > 1096) {
-                            const extraDistance = distanceInMeters - 1096;
-                            const extraFare = Math.ceil(extraDistance / 255) * 100;
-                            fare += extraFare;
-                        }
-                        resultDiv.innerHTML = `距離: ${distanceInKm}<br>概算運賃: 約 ${fare} 円`;
-                        // ルートが見つかったら、その範囲が収まるように地図を調整
-                        const bounds = new google.maps.LatLngBounds();
-                        route.steps.forEach(step => {
-                            bounds.extend(step.start_location);
-                            bounds.extend(step.end_location);
-                        });
-                        map.fitBounds(bounds);
-                    } else {
-                        resultDiv.textContent = 'ルートの詳細を取得できませんでした。';
-                    }
-                } else {
-                    resultDiv.textContent = 'ルートが見つかりませんでした。';
-                    directionsRenderer.setDirections({ routes: [] });
-                    map.setCenter({ lat: 36.052, lng: 140.075 });
-                    map.setZoom(13);
-                }
-            });
-        });
-
-        loadGoogleMapsAPI();
+        listenToLocations(); // Start listening to Firestore for locations
+        loadGoogleMapsScript(); // Load Google Maps API
+        
     </script>
 </body>
 </html>
