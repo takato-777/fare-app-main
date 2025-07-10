@@ -44,13 +44,12 @@
         label { display: block; margin-bottom: 0.5em; color: #555; font-weight: 500; font-size: 0.9em; }
         input, select, button { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
         
-        #calculate-btn { background-color: #1a73e8; color: white; border: none; cursor: pointer; transition: background-color 0.3s; font-weight: bold; }
+        #calculate-btn { background-color: #1a73e8; color: white; border: none; cursor: pointer; transition: background-color 0.3s; font-weight: bold; padding: 12px; }
         #calculate-btn:hover { background-color: #185abc; }
         
-        .hidden { display: none; }
-        
         #result-area { margin-top: 1.5em; padding: 1em; background-color: #e9f7ef; border-radius: 8px; font-weight: bold; color: #155724; line-height: 1.6; text-align: left; min-height: 1.5em; }
-        #result-area h2 { margin-top: 0; text-align: center; }
+        #result-area h2 { margin-top: 0; margin-bottom: 0.5em; text-align: center; font-size: 1.1em; }
+        #result-text { text-align:center; }
         
         .toggle-buttons { display: flex; gap: 5px; margin-bottom: 10px; }
         .toggle-buttons button { flex: 1; padding: 8px; font-size: 0.9em; background-color: #f0f0f0; color: #555; border: 1px solid #ccc; cursor: pointer; }
@@ -114,13 +113,9 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script>
-        const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
-    </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=initMap"></script>
 
     <script>
-        // Firebase Config
+        // --- Configuration ---
         const firebaseConfig = {
             apiKey: "AIzaSyD66pEZlZRYoGROuF2eImITKdnY3vBh3kY",
             authDomain: "fare-app-main.firebaseapp.com",
@@ -129,10 +124,13 @@
             messagingSenderId: "68530669162",
             appId: "1:68530669162:web:8f7ac180851b8f93902c13"
         };
+        const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
+
+        // --- Initialize Firebase ---
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // HTML Elements
+        // --- HTML Elements ---
         const startSearch = document.getElementById('start-search');
         const endSearch = document.getElementById('end-search');
         const calculateButton = document.getElementById('calculate-btn');
@@ -141,6 +139,7 @@
         
         let directionsService, directionsRenderer, map;
 
+        // --- Google Maps Initialization ---
         window.initMap = function() {
             map = new google.maps.Map(mapDiv, {
                 center: { lat: 35.681, lng: 139.767 },
@@ -148,8 +147,7 @@
                 mapTypeControl: false,
                 streetViewControl: false,
                 fullscreenControl: false,
-                zoomControl: true,
-                mapId: 'DEMO_MAP_ID' // A simple, clean map style
+                zoomControl: true
             });
             directionsService = new google.maps.DirectionsService();
             directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
@@ -163,7 +161,9 @@
         document.querySelectorAll('.toggle-buttons').forEach(group => {
             group.addEventListener('click', (e) => {
                 if (e.target.tagName === 'BUTTON') {
+                    // 同じグループ内の他のボタンから 'active' クラスを削除
                     group.querySelector('.active').classList.remove('active');
+                    // クリックされたボタンに 'active' クラスを追加
                     e.target.classList.add('active');
                 }
             });
@@ -211,6 +211,17 @@
                 }
             });
         });
+        
+        // --- Main Execution ---
+        function loadGoogleMapsScript() {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+
+        loadGoogleMapsScript();
     </script>
 </body>
 </html>
