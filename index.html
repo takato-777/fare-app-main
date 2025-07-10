@@ -16,6 +16,10 @@
         input, select, button { width: 100%; padding: 0.8em; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
         button { background-color: #007bff; color: white; border: none; cursor: pointer; transition: background-color 0.3s; }
         button:hover { background-color: #0056b3; }
+        .mode-toggle { margin-bottom: 0.5em; }
+        .mode-toggle button { width: auto; padding: 0.4em 0.8em; font-size: 0.8em; background-color: #f0f0f0; color: #555; border: 1px solid #ccc; }
+        .mode-toggle button.active { background-color: #007bff; color: white; border-color: #007bff; }
+        .hidden { display: none; }
         #result { margin-top: 1.5em; padding: 1em; background-color: #e9f7ef; border-radius: 4px; font-weight: bold; color: #155724; line-height: 1.5; text-align: center; min-height: 1.5em;}
         #saved-locations-list { list-style-type: none; padding: 0; }
         .location-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8em; border-bottom: 1px solid #eee; }
@@ -29,11 +33,21 @@
         <h1>運賃計算</h1>
         <div class="input-group">
             <label for="start">出発地</label>
-            <select id="start"></select>
+            <div class="mode-toggle">
+                <button id="start-mode-select" class="active" data-target="start">登録地から選択</button>
+                <button id="start-mode-search" data-target="start">住所を直接入力</button>
+            </div>
+            <select id="start-select"></select>
+            <input type="text" id="start-search" class="hidden" placeholder="出発地を検索">
         </div>
         <div class="input-group">
             <label for="end">目的地</label>
-            <select id="end"></select>
+            <div class="mode-toggle">
+                <button id="end-mode-select" class="active" data-target="end">登録地から選択</button>
+                <button id="end-mode-search" data-target="end">住所を直接入力</button>
+            </div>
+            <select id="end-select"></select>
+            <input type="text" id="end-search" class="hidden" placeholder="目的地を検索">
         </div>
         <button id="calculate">運賃を計算する</button>
         <div id="result"></div>
@@ -58,8 +72,11 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
+    <script>const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";</script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=initMap"></script>
+
     <script>
-        // --- Configuration ---
+        // Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyD66pEZlZRYoGROuF2eImITKdnY3vBh3kY",
             authDomain: "fare-app-main.firebaseapp.com",
@@ -68,15 +85,15 @@
             messagingSenderId: "68530669162",
             appId: "1:68530669162:web:8f7ac180851b8f93902c13"
         };
-        const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
-
-        // --- Initialize Firebase ---
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- HTML Elements ---
-        const startSelect = document.getElementById('start');
-        const endSelect = document.getElementById('end');
+        // HTML Elements
+        const startSelect = document.getElementById('start-select');
+        const startSearch = document.getElementById('start-search');
+        const endSelect = document.getElementById('end-select');
+        const endSearch = document.getElementById('end-search');
+        
         const calculateButton = document.getElementById('calculate');
         const resultDiv = document.getElementById('result');
         const mapDiv = document.getElementById('map');
@@ -87,11 +104,9 @@
 
         let directionsService, directionsRenderer, map;
 
-        // --- Google Maps Initialization ---
-        function initMap() {
+        window.initMap = function() {
             map = new google.maps.Map(mapDiv, {
-                zoom: 12,
-                center: { lat: 35.681, lng: 139.767 },
+                zoom: 12, center: { lat: 35.681, lng: 139.767 },
                 mapTypeControl: false, fullscreenControl: false, streetViewControl: false
             });
             directionsService = new google.maps.DirectionsService();
@@ -99,19 +114,19 @@
             
             const autocompleteOptions = { componentRestrictions: { country: "jp" } };
             new google.maps.places.Autocomplete(locationAddressInput, autocompleteOptions);
+            new google.maps.places.Autocomplete(startSearch, autocompleteOptions);
+            new google.maps.places.Autocomplete(endSearch, autocompleteOptions);
         }
 
-        // --- Firestore Functions ---
-        function listenToLocations() {
-             db.collection("locations").orderBy("name").onSnapshot(snapshot => {
-                const locations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                updateLocationUI(locations);
-            });
-        }
+        // --- Firestore Real-time Listener ---
+        db.collection("locations").orderBy("name").onSnapshot(snapshot => {
+            const locations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            updateLocationUI(locations);
+        });
 
         function updateLocationUI(locations) {
-            startSelect.innerHTML = '<option value="">出発地を選択</option>';
-            endSelect.innerHTML = '<option value="">目的地を選択</option>';
+            startSelect.innerHTML = '<option value="">登録地から選択...</option>';
+            endSelect.innerHTML = '<option value="">登録地から選択...</option>';
             savedLocationsList.innerHTML = "";
 
             locations.forEach(loc => {
@@ -126,6 +141,26 @@
         }
         
         // --- Event Listeners ---
+        document.querySelectorAll('.mode-toggle button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const target = e.target.dataset.target; // 'start' or 'end'
+                const selectEl = document.getElementById(`${target}-select`);
+                const searchEl = document.getElementById(`${target}-search`);
+                
+                document.getElementById(`${target}-mode-select`).classList.remove('active');
+                document.getElementById(`${target}-mode-search`).classList.remove('active');
+                e.target.classList.add('active');
+
+                if (e.target.id.includes('-search')) {
+                    selectEl.classList.add('hidden');
+                    searchEl.classList.remove('hidden');
+                } else {
+                    selectEl.classList.remove('hidden');
+                    searchEl.classList.add('hidden');
+                }
+            });
+        });
+
         addLocationForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = locationNameInput.value.trim();
@@ -147,11 +182,14 @@
         });
         
         calculateButton.addEventListener('click', () => {
-            const startPoint = startSelect.value;
-            const endPoint = endSelect.value;
+            const startMode = document.querySelector('#start-mode-select').classList.contains('active') ? 'select' : 'search';
+            const endMode = document.querySelector('#end-mode-select').classList.contains('active') ? 'select' : 'search';
+
+            const startPoint = startMode === 'select' ? startSelect.value : startSearch.value;
+            const endPoint = endMode === 'select' ? endSelect.value : endSearch.value;
 
             if (!startPoint || !endPoint) {
-                resultDiv.textContent = '出発地と目的地を選択してください。';
+                resultDiv.textContent = '出発地と目的地を指定してください。';
                 return;
             }
 
@@ -172,19 +210,6 @@
                 }
             });
         });
-
-        // --- Main Execution ---
-        function loadGoogleMapsScript() {
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=initMap`;
-            script.async = true;
-            script.defer = true;
-            document.head.appendChild(script);
-        }
-
-        listenToLocations(); // Start listening to Firestore for locations
-        loadGoogleMapsScript(); // Load Google Maps API
-        
     </script>
 </body>
 </html>
