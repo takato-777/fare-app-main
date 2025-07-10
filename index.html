@@ -113,7 +113,10 @@
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: 35.93, lng: 139.98 }, zoom: 12,
-                mapTypeControl: false, streetViewControl: false, fullscreenControl: false, zoomControl: true,
+                mapTypeControl: false, 
+                streetViewControl: true, // This enables Pegman
+                fullscreenControl: false, 
+                zoomControl: true,
             });
 
             placesService = new google.maps.places.PlacesService(map);
