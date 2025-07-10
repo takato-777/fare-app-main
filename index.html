@@ -6,14 +6,13 @@
     <title>運賃計算アプリ</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
-        #map-container { position: relative; flex-grow: 1; height: 100%; }
-        #map { width: 100%; height: 100%; background-color: #e9e9e9; }
+        #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #e9e9e9; }
         
-        #search-panel {
+        #left-panel {
             position: absolute;
             top: 10px;
             left: 10px;
-            width: 380px;
+            width: 400px;
             background-color: white;
             z-index: 10;
             border-radius: 8px;
@@ -22,196 +21,58 @@
             display: flex;
             flex-direction: column;
         }
-        
-        .panel-content { padding: 1em; overflow-y: auto; }
 
-        .sidebar {
-            width: 280px;
-            background-color: #f8f9fa;
-            padding: 1.5em;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            z-index: 10;
-            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        #search-box {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
         }
 
-        h1, h2 { text-align: left; color: #333; margin: 0; }
-        h1 { font-size: 1.5em; margin-bottom: 1em; text-align: center; }
-        h2 { font-size: 1.1em; margin-top: 1em; margin-bottom: 0.8em; }
+        #search-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1.1em;
+        }
         
-        .input-group, .setting-group { margin-bottom: 1em; }
-        label { display: block; margin-bottom: 0.5em; color: #555; font-weight: 500; font-size: 0.9em; }
-        input, select, button { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
-        
-        #calculate-btn { background-color: #1a73e8; color: white; border: none; cursor: pointer; transition: background-color 0.3s; font-weight: bold; padding: 12px; }
-        #calculate-btn:hover { background-color: #185abc; }
-        
-        #result-area { margin-top: 1.5em; padding: 1em; background-color: #e9f7ef; border-radius: 8px; font-weight: bold; color: #155724; line-height: 1.6; text-align: left; min-height: 1.5em; }
-        #result-area h2 { margin-top: 0; margin-bottom: 0.5em; text-align: center; font-size: 1.1em; }
-        #result-text { text-align:center; }
-        
-        .toggle-buttons { display: flex; gap: 5px; margin-bottom: 10px; }
-        .toggle-buttons button { flex: 1; padding: 8px; font-size: 0.9em; background-color: #f0f0f0; color: #555; border: 1px solid #ccc; cursor: pointer; }
-        .toggle-buttons button.active { background-color: #1a73e8; color: white; border-color: #1a73e8; font-weight: bold; }
-
-        #info-registration-panel { padding: 1em; border-top: 1px solid #eee; }
-        #info-registration-panel h2 { text-align: center; }
+        #panel-content {
+            padding: 15px;
+            overflow-y: auto;
+            text-align: center;
+            color: #888;
+        }
 
     </style>
 </head>
 <body>
-    <div id="map-container">
-        <div id="map"></div>
-        <div id="search-panel">
-            <div class="panel-content">
-                <h2>ルート検索</h2>
-                <div class="input-group">
-                    <label>出発地</label>
-                    <input type="text" id="start-search" placeholder="出発地を検索">
-                </div>
-                <div class="input-group">
-                    <label>目的地</label>
-                    <input type="text" id="end-search" placeholder="目的地を検索">
-                </div>
-            </div>
-            <div id="info-registration-panel">
-                <h2>情報の登録</h2>
-                <p style="text-align:center; color:#888;">（登録機能はここに配置します）</p>
-            </div>
+    <div id="left-panel">
+        <div id="search-box">
+            <input type="text" id="search-input" placeholder="場所を検索、またはルートを検索">
+        </div>
+        <div id="panel-content">
+            <p>ここに検索結果やルート情報が表示されます。</p>
         </div>
     </div>
-    <div class="sidebar">
-        <h1>設定</h1>
-        <div class="setting-group">
-            <label>車両サイズ</label>
-            <div class="toggle-buttons">
-                <button class="vehicle-btn active" data-value="20F">20F</button>
-                <button class="vehicle-btn" data-value="40F">40F</button>
-            </div>
-        </div>
-        <div class="setting-group">
-            <label>軸数</label>
-            <div class="toggle-buttons">
-                <button class="axle-btn active" data-value="2-axle">2軸</button>
-                <button class="axle-btn" data-value="3-axle">3軸</button>
-            </div>
-        </div>
-        <div class="setting-group">
-            <label>高速の設定</label>
-            <div class="toggle-buttons">
-                 <button class="trip-btn active" data-value="one-way">片道</button>
-                 <button class="trip-btn" data-value="round-trip">往復</button>
-            </div>
-        </div>
-        <button id="calculate-btn">運賃を計算する</button>
-        <div id="result-area">
-             <h2>料金表示</h2>
-             <p id="result-text" style="text-align:center; color:#888;">計算結果がここに表示されます</p>
-        </div>
-    </div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <div id="map"></div>
 
     <script>
         // --- Configuration ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyD66pEZlZRYoGROuF2eImITKdnY3vBh3kY",
-            authDomain: "fare-app-main.firebaseapp.com",
-            projectId: "fare-app-main",
-            storageBucket: "fare-app-main.firebasestorage.app",
-            messagingSenderId: "68530669162",
-            appId: "1:68530669162:web:8f7ac180851b8f93902c13"
-        };
         const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
 
-        // --- Initialize Firebase ---
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // --- HTML Elements ---
-        const startSearch = document.getElementById('start-search');
-        const endSearch = document.getElementById('end-search');
-        const calculateButton = document.getElementById('calculate-btn');
-        const resultText = document.getElementById('result-text');
-        const mapDiv = document.getElementById('map');
-        
-        let directionsService, directionsRenderer, map;
-
         // --- Google Maps Initialization ---
-        window.initMap = function() {
-            map = new google.maps.Map(mapDiv, {
-                center: { lat: 35.681, lng: 139.767 },
+        function initMap() {
+            new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 35.681, lng: 139.767 }, // 東京駅
                 zoom: 12,
                 mapTypeControl: false,
                 streetViewControl: false,
                 fullscreenControl: false,
-                zoomControl: true
+                zoomControl: true,
             });
-            directionsService = new google.maps.DirectionsService();
-            directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
-            
-            const autocompleteOptions = { componentRestrictions: { country: "jp" } };
-            new google.maps.places.Autocomplete(startSearch, autocompleteOptions);
-            new google.maps.places.Autocomplete(endSearch, autocompleteOptions);
+            // 現時点では検索機能はまだ実装しない
         }
 
-        // --- Toggle Button Logic ---
-        document.querySelectorAll('.toggle-buttons').forEach(group => {
-            group.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
-                    // 同じグループ内の他のボタンから 'active' クラスを削除
-                    group.querySelector('.active').classList.remove('active');
-                    // クリックされたボタンに 'active' クラスを追加
-                    e.target.classList.add('active');
-                }
-            });
-        });
-
-        // --- Calculation Logic ---
-        calculateButton.addEventListener('click', () => {
-            const startPoint = startSearch.value;
-            const endPoint = endSearch.value;
-
-            if (!startPoint || !endPoint) {
-                resultText.textContent = '出発地と目的地を入力してください。';
-                return;
-            }
-            
-            const vehicleSize = document.querySelector('.vehicle-btn.active').dataset.value;
-            const axleCount = document.querySelector('.axle-btn.active').dataset.value;
-            const tripType = document.querySelector('.trip-btn.active').dataset.value;
-            
-            const request = {
-                origin: startPoint,
-                destination: endPoint,
-                travelMode: 'DRIVING',
-                avoidTolls: false // 高速道路を利用
-            };
-            
-            directionsService.route(request, (result, status) => {
-                if (status == 'OK') {
-                    directionsRenderer.setDirections(result);
-                    const route = result.routes[0].legs[0];
-                    const distanceInKm = route.distance.value / 1000;
-
-                    // --- Dummy Fare Calculation Logic ---
-                    let baseRate = 150; // 20F, 2軸
-                    if (vehicleSize === '40F') baseRate += 30; // 40Fは割増
-                    if (axleCount === '3-axle') baseRate += 20; // 3軸は割増
-
-                    let fare = distanceInKm * baseRate;
-                    if (tripType === 'round-trip') fare *= 1.9; // 往復は少し割引
-
-                    resultText.innerHTML = `距離: ${route.distance.text}<br>概算運賃: 約 ${Math.round(fare)} 円`;
-                } else {
-                    resultText.textContent = 'ルートが見つかりませんでした。';
-                    directionsRenderer.setDirections({routes: []});
-                }
-            });
-        });
-        
         // --- Main Execution ---
         function loadGoogleMapsScript() {
             const script = document.createElement('script');
