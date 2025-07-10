@@ -25,6 +25,7 @@
         #search-box {
             padding: 15px;
             border-bottom: 1px solid #e0e0e0;
+            flex-shrink: 0;
         }
 
         #search-input {
@@ -39,9 +40,11 @@
         #panel-content {
             padding: 15px;
             overflow-y: auto;
-            text-align: center;
-            color: #888;
+            color: #333;
         }
+        .place-name { font-size: 1.4em; font-weight: bold; margin-bottom: 10px; }
+        .place-address { font-size: 1em; color: #555; margin-bottom: 15px; }
+        .place-photo { width: 100%; border-radius: 4px; margin-bottom: 15px;}
 
     </style>
 </head>
@@ -51,7 +54,7 @@
             <input type="text" id="search-input" placeholder="場所を検索、またはルートを検索">
         </div>
         <div id="panel-content">
-            <p>ここに検索結果やルート情報が表示されます。</p>
+            <p style="text-align: center; color: #888;">ここに検索結果やルート情報が表示されます。</p>
         </div>
     </div>
     <div id="map"></div>
@@ -60,17 +63,73 @@
         // --- Configuration ---
         const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
 
+        // --- Global Variables ---
+        let map;
+        let placesService;
+        let infoWindow;
+        let marker;
+
         // --- Google Maps Initialization ---
         function initMap() {
-            new google.maps.Map(document.getElementById('map'), {
-                center: { lat: 35.681, lng: 139.767 }, // 東京駅
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 35.93, lng: 139.98 }, // 現在地（つくばみらい市）周辺
                 zoom: 12,
                 mapTypeControl: false,
                 streetViewControl: false,
                 fullscreenControl: false,
                 zoomControl: true,
             });
-            // 現時点では検索機能はまだ実装しない
+
+            placesService = new google.maps.places.PlacesService(map);
+            infoWindow = new google.maps.InfoWindow();
+
+            const searchInput = document.getElementById('search-input');
+            new google.maps.places.Autocomplete(searchInput);
+
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch(searchInput.value);
+                }
+            });
+        }
+
+        function performSearch(query) {
+            const request = {
+                query: query,
+                fields: ['name', 'geometry', 'formatted_address', 'photos'],
+            };
+
+            placesService.findPlaceFromQuery(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                    if (marker) {
+                        marker.setMap(null); // Clear previous marker
+                    }
+                    map.setCenter(results[0].geometry.location);
+                    map.setZoom(15);
+
+                    marker = new google.maps.Marker({
+                        map,
+                        position: results[0].geometry.location,
+                    });
+
+                    displayPlaceDetails(results[0]);
+                } else {
+                    document.getElementById('panel-content').innerHTML = '<p style="text-align: center; color: red;">場所が見つかりませんでした。</p>';
+                }
+            });
+        }
+
+        function displayPlaceDetails(place) {
+            const panelContent = document.getElementById('panel-content');
+            let content = `<div class="place-name">${place.name}</div>`;
+            content += `<div class="place-address">${place.formatted_address}</div>`;
+
+            if (place.photos && place.photos.length > 0) {
+                const photoUrl = place.photos[0].getUrl({ maxWidth: 400, maxHeight: 200 });
+                content += `<img src="${photoUrl}" class="place-photo" alt="場所の写真">`;
+            }
+            // Add more details here in the future
+            panelContent.innerHTML = content;
         }
 
         // --- Main Execution ---
