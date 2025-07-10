@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>運賃計算アプリ</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
-        #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #e9e9e9; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; height: 100vh; display: flex; overflow: hidden; }
+        #map-container { position: relative; flex-grow: 1; height: 100%; }
+        #map { width: 100%; height: 100%; background-color: #e9e9e9; }
         
         #left-panel {
             position: absolute;
@@ -22,73 +23,96 @@
             flex-direction: column;
         }
 
-        #search-box {
-            padding: 15px;
-            border-bottom: 1px solid #e0e0e0;
-            flex-shrink: 0;
-        }
-
-        #search-input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 1.1em;
-        }
+        #search-box { padding: 15px; border-bottom: 1px solid #e0e0e0; flex-shrink: 0; }
+        #search-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 1.1em; }
+        #panel-content { padding: 15px; overflow-y: auto; color: #333; }
         
-        #panel-content {
-            padding: 15px;
-            overflow-y: auto;
-            color: #333;
-        }
         .place-name { font-size: 1.4em; font-weight: bold; margin-bottom: 10px; }
         .place-address { font-size: 1em; color: #555; margin-bottom: 15px; }
         .place-photo { width: 100%; border-radius: 4px; margin-bottom: 15px;}
         
-        .route-btn {
+        .action-btn {
             background-color: #1a73e8; color: white; border: none; cursor: pointer;
             padding: 10px 15px; border-radius: 4px; font-weight: bold;
-            transition: background-color 0.3s; margin-bottom: 15px;
+            transition: background-color 0.3s; margin-bottom: 15px; width: 100%;
         }
-        .route-btn:hover { background-color: #185abc; }
+        .action-btn:hover { background-color: #185abc; }
 
         .directions-form .input-group { margin-bottom: 10px; }
         .directions-form label { font-size: 0.9em; font-weight: 500; }
         .directions-form input { padding: 10px; font-size: 1em; }
-        
         .route-summary { margin-top: 15px; font-size: 1.1em; font-weight: bold; }
 
+        .sidebar {
+            width: 280px; background-color: #f8f9fa; padding: 1.5em; box-sizing: border-box;
+            display: flex; flex-direction: column; z-index: 5; box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+        .sidebar h1, .sidebar h2 { text-align: left; color: #333; margin: 0; }
+        .sidebar h1 { font-size: 1.5em; margin-bottom: 1em; text-align: center; }
+        .sidebar h2 { font-size: 1.1em; margin-top: 1.5em; margin-bottom: 0.8em; }
+        .setting-group { margin-bottom: 1em; }
+        .toggle-buttons { display: flex; gap: 5px; margin-bottom: 10px; }
+        .toggle-buttons button { flex: 1; padding: 8px; font-size: 0.9em; background-color: #f0f0f0; color: #555; border: 1px solid #ccc; cursor: pointer; }
+        .toggle-buttons button.active { background-color: #1a73e8; color: white; border-color: #1a73e8; font-weight: bold; }
+        #result-area { margin-top: auto; padding-top: 1.5em; border-top: 1px solid #ddd; }
+        #result-text { font-size: 1.2em; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
-    <div id="left-panel">
-        <div id="search-box">
-            <input type="text" id="search-input" placeholder="場所を検索、またはルートを検索">
+    <div id="map-container">
+        <div id="left-panel">
+            <div id="search-box">
+                <input type="text" id="search-input" placeholder="場所を検索、またはルートを検索">
+            </div>
+            <div id="panel-content">
+                <p style="text-align: center; color: #888;">ここに検索結果やルート情報が表示されます。</p>
+            </div>
         </div>
-        <div id="panel-content">
-            <p style="text-align: center; color: #888;">ここに検索結果やルート情報が表示されます。</p>
+        <div id="map"></div>
+    </div>
+    <div class="sidebar">
+        <h1>設定</h1>
+        <div class="setting-group">
+            <h2>車両サイズ</h2>
+            <div class="toggle-buttons">
+                <button class="vehicle-btn active" data-value="20F">20F</button>
+                <button class="vehicle-btn" data-value="40F">40F</button>
+            </div>
+        </div>
+        <div class="setting-group">
+            <h2>軸数</h2>
+            <div class="toggle-buttons">
+                <button class="axle-btn active" data-value="2-axle">2軸</button>
+                <button class="axle-btn" data-value="3-axle">3軸</button>
+            </div>
+        </div>
+        <div class="setting-group">
+            <h2>高速の設定</h2>
+            <div class="toggle-buttons">
+                 <button class="trip-btn active" data-value="one-way">片道</button>
+                 <button class="trip-btn" data-value="round-trip">往復</button>
+            </div>
+        </div>
+        <div id="result-area">
+             <h2>料金表示</h2>
+             <p id="result-text" style="text-align:center; color:#888;">ルート検索後に料金が表示されます</p>
         </div>
     </div>
-    <div id="map"></div>
 
     <script>
         // --- Configuration ---
         const googleMapsApiKey = "AIzaSyCCP8iGLQioiNcYGAE40IXldBKTLIJx1Ok";
 
         // --- Global Variables ---
-        let map;
-        let placesService;
-        let directionsService;
-        let directionsRenderer;
+        let map, placesService, directionsService, directionsRenderer;
         let marker;
-        let currentPlace = null; // To store details of the currently displayed place
+        let currentPlace = null;
+        let currentRoute = null;
 
         // --- Google Maps Initialization ---
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
-                center: { lat: 35.93, lng: 139.98 },
-                zoom: 12,
+                center: { lat: 35.93, lng: 139.98 }, zoom: 12,
                 mapTypeControl: false, streetViewControl: false, fullscreenControl: false, zoomControl: true,
             });
 
@@ -98,32 +122,18 @@
 
             const searchInput = document.getElementById('search-input');
             new google.maps.places.Autocomplete(searchInput);
-
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    performSearch(searchInput.value);
-                }
-            });
+            searchInput.addEventListener('keypress', e => e.key === 'Enter' && performSearch(searchInput.value));
         }
 
+        // --- UI Functions ---
         function performSearch(query) {
-            const request = {
-                query: query,
-                fields: ['name', 'geometry', 'formatted_address', 'photos', 'place_id'],
-            };
-
-            placesService.findPlaceFromQuery(request, (results, status) => {
+            placesService.findPlaceFromQuery({ query, fields: ['name', 'geometry', 'formatted_address', 'photos', 'place_id'] }, (results, status) => {
                 if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-                    clearMap();
+                    clearMapAndRoute();
                     map.setCenter(results[0].geometry.location);
                     map.setZoom(15);
-
-                    marker = new google.maps.Marker({
-                        map,
-                        position: results[0].geometry.location,
-                    });
-                    
-                    currentPlace = results[0]; // Store place details
+                    marker = new google.maps.Marker({ map, position: results[0].geometry.location });
+                    currentPlace = results[0];
                     displayPlaceDetails(currentPlace);
                 } else {
                     document.getElementById('panel-content').innerHTML = '<p style="text-align: center; color: red;">場所が見つかりませんでした。</p>';
@@ -135,11 +145,10 @@
             const panelContent = document.getElementById('panel-content');
             let content = `<div class="place-name">${place.name}</div>`;
             content += `<div class="place-address">${place.formatted_address}</div>`;
-            if (place.photos && place.photos.length > 0) {
-                const photoUrl = place.photos[0].getUrl({ maxWidth: 400, maxHeight: 200 });
-                content += `<img src="${photoUrl}" class="place-photo" alt="場所の写真">`;
+            if (place.photos?.[0]) {
+                content += `<img src="${place.photos[0].getUrl({ maxWidth: 400, maxHeight: 200 })}" class="place-photo" alt="場所の写真">`;
             }
-            content += `<button class="route-btn" onclick="showDirectionsForm()">ここへのルート</button>`;
+            content += `<button class="action-btn" onclick="showDirectionsForm()">ここへのルート</button>`;
             panelContent.innerHTML = content;
         }
 
@@ -153,18 +162,17 @@
                     </div>
                     <div class="input-group">
                         <label>目的地</label>
-                        <input type="text" id="directions-end" value="${currentPlace ? currentPlace.name : ''}">
+                        <input type="text" id="directions-end" value="${currentPlace?.name || ''}">
                     </div>
-                    <button class="route-btn" onclick="calculateRoute()">ルートを検索</button>
+                    <button class="action-btn" onclick="calculateAndDisplayRoute()">ルート検索</button>
                     <div id="route-summary" class="route-summary"></div>
-                </div>
-            `;
+                </div>`;
             new google.maps.places.Autocomplete(document.getElementById('directions-start'));
             new google.maps.places.Autocomplete(document.getElementById('directions-end'));
         }
 
-        function calculateRoute() {
-            clearMap();
+        function calculateAndDisplayRoute() {
+            clearMapAndRoute();
             const start = document.getElementById('directions-start').value;
             const end = document.getElementById('directions-end').value;
 
@@ -173,30 +181,59 @@
                 return;
             }
 
-            const request = {
-                origin: start,
-                destination: end,
-                travelMode: 'DRIVING'
-            };
-
-            directionsService.route(request, (result, status) => {
+            directionsService.route({ origin: start, destination: end, travelMode: 'DRIVING' }, (result, status) => {
                 if (status == 'OK') {
                     directionsRenderer.setDirections(result);
-                    const route = result.routes[0].legs[0];
+                    currentRoute = result.routes[0].legs[0]; // Store current route
                     document.getElementById('route-summary').innerHTML = `
-                        距離: ${route.distance.text}<br>
-                        所要時間: ${route.duration.text}
-                    `;
+                        距離: ${currentRoute.distance.text}<br>
+                        所要時間: ${currentRoute.duration.text}`;
+                    calculateFare(); // Calculate fare immediately
                 } else {
                     document.getElementById('route-summary').innerText = 'ルートが見つかりませんでした。';
+                    currentRoute = null;
                 }
             });
         }
         
-        function clearMap() {
-            if (marker) marker.setMap(null);
-            directionsRenderer.setDirections({routes: []});
+        function calculateFare() {
+            if (!currentRoute) {
+                document.getElementById('result-text').textContent = '先にルートを検索してください。';
+                return;
+            }
+
+            const vehicleSize = document.querySelector('.vehicle-btn.active').dataset.value;
+            const axleCount = document.querySelector('.axle-btn.active').dataset.value;
+            const tripType = document.querySelector('.trip-btn.active').dataset.value;
+            const distanceInKm = currentRoute.distance.value / 1000;
+
+            let baseRate = 150; // 20F, 2軸
+            if (vehicleSize === '40F') baseRate += 30;
+            if (axleCount === '3-axle') baseRate += 20;
+
+            let fare = distanceInKm * baseRate + 2000; // Base fee
+            if (tripType === 'round-trip') fare *= 1.9;
+
+            document.getElementById('result-text').innerHTML = `概算運賃<br><span style="font-size:1.5em; color: #000;">約 ${Math.round(fare)} 円</span>`;
         }
+        
+        function clearMapAndRoute() {
+            if (marker) marker.setMap(null);
+            directionsRenderer.setDirections({ routes: [] });
+            currentRoute = null;
+            document.getElementById('result-text').textContent = 'ルート検索後に料金が表示されます';
+        }
+
+        // --- Event Listeners ---
+        document.querySelectorAll('.toggle-buttons').forEach(group => {
+            group.addEventListener('click', e => {
+                if (e.target.tagName === 'BUTTON') {
+                    group.querySelector('.active').classList.remove('active');
+                    e.target.classList.add('active');
+                    calculateFare(); // Recalculate fare on setting change
+                }
+            });
+        });
 
         // --- Main Execution ---
         function loadGoogleMapsScript() {
